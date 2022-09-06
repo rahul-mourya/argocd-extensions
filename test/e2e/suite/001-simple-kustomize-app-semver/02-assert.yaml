@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-extentions-001
+spec:
+  source:
+    kustomize:
+      images:
+      - localhost:5001/test-image:1.0.0
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: argocd-extentions-e2e-001
+spec:
+  containers:
+  - image: localhost:5001/test-image:1.0.0

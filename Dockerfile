@@ -17,10 +17,11 @@ RUN CGO_ENABLED=0 go build -a -o manager main.go
 
 FROM alpine:latest
 
-RUN apk update && apk upgrade && apk add git openssh-client
+RUN apk update && apk upgrade && apk add git openssh-client && ssh-keyscan github.ibm.com > /etc/ssh/ssh_known_hosts
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
+RUN adduser --disabled-password -u 65532 main 65532
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

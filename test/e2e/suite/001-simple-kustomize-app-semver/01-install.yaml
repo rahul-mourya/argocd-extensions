@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd-extentions-e2e-001
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-extentions-001
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: http://10.96.9.128:8080/testdata.git
+    path: ./001-simple-kustomize-app
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-extentions-e2e-001
+  syncPolicy:
+    automated: {}
+    retry:
+      limit: 2
