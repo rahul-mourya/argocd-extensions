@@ -7,6 +7,8 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
@@ -26,7 +28,7 @@ func IsTruncatedCommitSHA(sha string) bool {
 }
 
 // LsRemote resolves commit sha for given Git repo and revision
-func LsRemote(repoURL string, revision string) (string, error) {
+func LsRemote(repoURL string, revision string, auth transport.AuthMethod) (string, error) {
 	if IsCommitSHA(revision) || IsTruncatedCommitSHA(revision) {
 		return revision, nil
 	}
@@ -42,7 +44,15 @@ func LsRemote(repoURL string, revision string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	refs, err := remote.List(&git.ListOptions{})
+
+	a, ok := auth.(ssh.AuthMethod)
+	if !ok {
+		return "", fmt.Errorf("auth cast failed")
+	}
+
+	refs, err := remote.List(&git.ListOptions{
+		Auth: a,
+	})
 
 	if err != nil {
 		return "", err
