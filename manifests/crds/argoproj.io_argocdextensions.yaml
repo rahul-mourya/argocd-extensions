@@ -73,13 +73,16 @@ spec:
                         url:
                           description: URL specifies the Git repository URL to fetch
                           type: string
+                      required:
+                      - url
+                      - revision
                       type: object
                     web:
                       description: Web is specified if the extension should be sourced
                         from a web file
                       properties:
                         url:
-                          description: URK specifies the remote file URL
+                          description: URL specifies the remote file URL
                           type: string
                       type: object
                   type: object

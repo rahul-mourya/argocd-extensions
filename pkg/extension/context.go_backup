@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -17,9 +18,9 @@ import (
 
 	"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/ghodss/yaml"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/hashicorp/go-getter"
-	ssh "golang.org/x/crypto/ssh"
-	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
+	"golang.org/x/crypto/ssh"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +52,11 @@ type extensionContext struct {
 type sourcesSnapshot struct {
 	Revisions []string `json:"revisions"`
 	Files     []string `json:"files"`
+}
+
+type PublicKeysWithOptions struct {
+	KexAlgorithms []string
+	gitssh.PublicKeys
 }
 
 func (s *sourcesSnapshot) shouldDownload(revisions []string) string {
@@ -182,9 +188,9 @@ func (c *extensionContext) Process(ctx context.Context) error {
 	}
 
 	// download all extension files into temp directory
-	tempDir, err := os.MkdirTemp("", "")
+	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
-		return fmt.Errorf("failed to create temp dir %w", err)
+		return fmt.Errorf("failed to create temp dir %v", err)
 	}
 	defer func() {
 		if err := os.RemoveAll(tempDir); err != nil {
@@ -397,7 +403,7 @@ func (c *extensionContext) saveSnapshot(snapshot sourcesSnapshot) error {
 		return err
 	}
 
-	if err := os.WriteFile(c.snapshotPath, data, 0755); err != nil {
+	if err := ioutil.WriteFile(c.snapshotPath, data, 0755); err != nil {
 		return fmt.Errorf("failed to persist download sources revisions: %v", err)
 	}
 	return nil
@@ -405,7 +411,7 @@ func (c *extensionContext) saveSnapshot(snapshot sourcesSnapshot) error {
 
 func (c *extensionContext) loadSnapshot() sourcesSnapshot {
 	var prev sourcesSnapshot
-	if data, err := os.ReadFile(c.snapshotPath); err == nil {
+	if data, err := ioutil.ReadFile(c.snapshotPath); err == nil {
 		_ = json.Unmarshal(data, &prev)
 	}
 	return prev
@@ -420,6 +426,8 @@ func (c *extensionContext) deleteSnapshot() error {
 }
 
 func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
+	log := k8slog.FromContext(ctx)
+	log.Info("########## Entering downloadTo")
 	for _, s := range c.extension.Spec.Sources {
 		switch {
 		case s.Git != nil:
@@ -442,6 +450,9 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 			} else {
 				gitURL = fmt.Sprintf("git::%s%s//%s?ref=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision)
 			}
+			dest_path := filepath.Join(out, "resources")
+			log.Info(fmt.Sprintf("########## downloadTo dest filepath: %s", dest_path))
+			log.Info(fmt.Sprintf("########## downloadTo source filepath: %s", gitURL))
 			if err := getter.Get(filepath.Join(out, "resources"), gitURL); err != nil {
 				return err
 			}
@@ -451,11 +462,14 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 			}
 		}
 	}
+	log.Info("########## Exiting downloadTo")
 	return nil
 }
 
 func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, error) {
 	var res []string
+	log := k8slog.FromContext(ctx)
+	log.Info("########## Entering resolveRevisions")
 	for _, s := range c.extension.Spec.Sources {
 		switch {
 		case s.Git != nil:
@@ -463,12 +477,20 @@ func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, erro
 			if err != nil {
 				return nil, err
 			}
-			publicKey, err := gitssh.NewPublicKeys("git", secret.Data["sshkey"], "")
+			signer, err := ssh.ParsePrivateKey((secret.Data["sshkey"]))
 			if err != nil {
 				return nil, err
 			}
-			publicKey.HostKeyCallback = ssh.InsecureIgnoreHostKey()
-			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision, publicKey)
+			auth := &PublicKeysWithOptions{}
+			auth.User = "git"
+			auth.Signer = signer
+			auth.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+			//auth.HostKeyCallback, err = knownhosts.New(filepath.Join("/etc/ssh", "ssh_known_hosts"))
+			if err != nil {
+				return nil, err
+			}
+			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision, auth)
+			log.Info(fmt.Sprintf("########## Latest SHA: %s", sha))
 			if err != nil {
 				return nil, err
 			}
@@ -480,6 +502,7 @@ func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, erro
 	sort.Slice(res, func(i, j int) bool {
 		return res[i] < res[j]
 	})
+	log.Info("########## Exiting resolveRevisions")
 	return res, nil
 }
 

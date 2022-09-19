@@ -17,7 +17,8 @@ RUN CGO_ENABLED=0 go build -a -o manager main.go
 
 FROM alpine:latest
 
-RUN apk update && apk upgrade && apk add git openssh-client && ssh-keyscan github.ibm.com > /etc/ssh/ssh_known_hosts
+RUN apk update && apk upgrade && apk add git openssh-client
+COPY ssh_known_hosts /etc/ssh/ssh_known_hosts
 
 WORKDIR /
 COPY --from=builder /workspace/manager .

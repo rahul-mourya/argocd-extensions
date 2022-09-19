@@ -28,7 +28,6 @@ readonly FCGISOCKET="/var/run/fcgiwrap.socket"
 
 main() {
   mkdir -p $GIT_PROJECT_ROOT
-
   # Checks if $GIT_INITIAL_ROOT has files
   if [[ $(ls -A ${GIT_INITIAL_ROOT}) ]]; then
     initialize_initial_repositories
@@ -40,6 +39,9 @@ initialize_services() {
   # Check permissions on $GIT_PROJECT_ROOT
   chown -R git:git $GIT_PROJECT_ROOT
   chmod -R 775 $GIT_PROJECT_ROOT
+  chmod go-w /var/lib/git                                                                    
+  chmod 700 /var/lib/git/.ssh                           
+  chmod 600 /var/lib/git/.ssh/authorized_keys
 
   /usr/bin/spawn-fcgi \
     -s $FCGISOCKET \
