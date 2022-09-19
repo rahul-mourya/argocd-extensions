@@ -13,7 +13,8 @@
       "verbs": [
         "get",
         "list",
-        "watch"
+        "watch",
+        "update"
       ]
     }
 	}
