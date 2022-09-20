@@ -7,7 +7,7 @@ status:
   health:
     status: Healthy
   resources:
-  - group: test.customhealthcheck.com
+  - group: test.nocustomhealthcheck.com
     kind: TestResource
     name: blue
     namespace: argocd-extentions-e2e-001
