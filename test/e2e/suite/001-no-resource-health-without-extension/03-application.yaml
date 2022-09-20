@@ -14,7 +14,7 @@ spec:
   project: default
   source:
     repoURL: http://10.96.199.155:8080/testdata.git
-    path: test-resources/custom-resource
+    path: test-resources/custom-resource-without-healthcheck
     targetRevision: HEAD
   destination:
     server: https://kubernetes.default.svc

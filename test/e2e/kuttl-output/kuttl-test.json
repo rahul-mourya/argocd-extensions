@@ -1,0 +1,52 @@
+{
+   "name": "",
+   "tests": 5,
+   "failures": 0,
+   "time": "10.087",
+   "testsuite": [
+     {
+       "tests": 5,
+       "failures": 0,
+       "timestamp": "2022-09-20T12:35:55.247562+05:30",
+       "time": "8.872",
+       "name": "./suite",
+       "testcase": [
+         {
+           "classname": "suite",
+           "name": "001-no-resource-health-without-extension",
+           "timestamp": "2022-09-20T12:35:55.248339+05:30",
+           "time": "1.453",
+           "assertions": 1
+         },
+         {
+           "classname": "suite",
+           "name": "004-multiple-custom-resource-health",
+           "timestamp": "2022-09-20T12:35:56.701984+05:30",
+           "time": "1.869",
+           "assertions": 1
+         },
+         {
+           "classname": "suite",
+           "name": "005-duplicate-custom-resource",
+           "timestamp": "2022-09-20T12:35:58.571843+05:30",
+           "time": "1.795",
+           "assertions": 1
+         },
+         {
+           "classname": "suite",
+           "name": "003-progressing-resource-health-with-extension",
+           "timestamp": "2022-09-20T12:36:00.368913+05:30",
+           "time": "1.892",
+           "assertions": 1
+         },
+         {
+           "classname": "suite",
+           "name": "002-healthy-resource-health-with-extension",
+           "timestamp": "2022-09-20T12:36:02.261566+05:30",
+           "time": "1.857",
+           "assertions": 1
+         }
+       ]
+     }
+   ]
+ }
