@@ -73,7 +73,6 @@ func TestReconcilerValidationErrorBehaviour(t *testing.T) {
 		},
 	}
 
-	// Verify that on validation error, no error is returned, but the object is requeued
 	res, err := r.Reconcile(context.Background(), req)
 	assert.Nil(t, err)
 	assert.True(t, res.RequeueAfter == 0)
