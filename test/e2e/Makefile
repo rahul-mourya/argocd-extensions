@@ -30,8 +30,6 @@ install-prereqs:
 	export KUBECONFIG=~/.kube/config-kind
 	kubectl config set-context --current --namespace=argocd-extentions-e2e
 	kustomize build prereqs/argocd | kubectl -n argocd-extentions-e2e apply -f -
-	kubectl apply -n argocd-extentions-e2e -f prereqs/registry/registry.yaml
-	kubectl rollout -n argocd-extentions-e2e status deployment e2e-registry-public
 	sleep 5
 	make git-container-push
 	kubectl apply -n argocd-extentions-e2e -f prereqs/repo/install.yaml

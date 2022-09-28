@@ -13,7 +13,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: http://10.96.199.155:8080/testdata.git
+    repoURL: http://10.96.169.143:8080/testdata.git
     path: test-resources/custom-resource-without-healthcheck
     targetRevision: HEAD
   destination:
