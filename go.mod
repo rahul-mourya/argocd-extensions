@@ -6,6 +6,8 @@ require (
 	github.com/argoproj/argo-cd/v2 v2.4.11
 	github.com/ghodss/yaml v1.0.0
 	github.com/hashicorp/go-getter v1.6.2
+	github.com/stretchr/testify v1.7.1
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
@@ -117,7 +119,6 @@ require (
 	github.com/spf13/cobra v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	github.com/vmihailenco/go-tinylfu v0.2.1 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect
@@ -129,7 +130,6 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/exp v0.0.0-20210901193431-a062eea981d2 // indirect
 	golang.org/x/net v0.0.0-20220621193019-9d032be2e588 // indirect
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect

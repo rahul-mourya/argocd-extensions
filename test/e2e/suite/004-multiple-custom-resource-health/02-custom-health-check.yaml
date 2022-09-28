@@ -7,7 +7,7 @@ spec:
   baseDirectory: resource_customizations_duplicate
   sources:
     - git:
-        url: ssh://git@10.96.199.155:2222/var/lib/git/testdata.git
+        url: ssh://git@10.96.169.143:2222/var/lib/git/testdata.git
         revision: HEAD
         secret:
           name: e2e-git-repo

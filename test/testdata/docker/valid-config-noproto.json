@@ -1,7 +1,0 @@
-{
-        "auths": {
-                "registry-1.docker.io": {
-                        "auth": "Zm9vOmJhcg=="
-                }
-        }
-}
