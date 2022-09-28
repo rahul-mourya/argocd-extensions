@@ -37,6 +37,7 @@ main() {
 
 initialize_services() {
   # Check permissions on $GIT_PROJECT_ROOT
+  /usr/sbin/sshd
   chown -R git:git $GIT_PROJECT_ROOT
   chmod -R 775 $GIT_PROJECT_ROOT
   chmod go-w /var/lib/git                                                                    
