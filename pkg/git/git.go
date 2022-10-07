@@ -2,20 +2,38 @@ package git
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
+	"github.com/argoproj/argo-cd/common"
+	certutil "github.com/argoproj/argo-cd/v2/util/cert"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v5/storage/memory"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 var (
 	commitSHARegex          = regexp.MustCompile("^[0-9A-Fa-f]{40}$")
 	truncatedCommitSHARegex = regexp.MustCompile("^[0-9A-Fa-f]{7,}$")
+	sshURLRegex             = regexp.MustCompile("^(ssh://)?([^/:]*?)@[^@]+$")
+	httpsURLRegex           = regexp.MustCompile("^(https://).*")
+	httpURLRegex            = regexp.MustCompile("^(http://).*")
 )
+
+type Creds struct {
+	SSHPrivateKey string
+	Username      string
+	Password      string
+	Insecure      bool
+}
 
 // IsCommitSHA returns whether or not a string is a 40 character SHA-1
 func IsCommitSHA(sha string) bool {
@@ -28,7 +46,7 @@ func IsTruncatedCommitSHA(sha string) bool {
 }
 
 // LsRemote resolves commit sha for given Git repo and revision
-func LsRemote(repoURL string, revision string, auth transport.AuthMethod) (string, error) {
+func LsRemote(repoURL string, revision string, auth transport.AuthMethod, insecure bool) (string, error) {
 	if IsCommitSHA(revision) || IsTruncatedCommitSHA(revision) {
 		return revision, nil
 	}
@@ -44,14 +62,9 @@ func LsRemote(repoURL string, revision string, auth transport.AuthMethod) (strin
 	if err != nil {
 		return "", err
 	}
-
-	a, ok := auth.(ssh.AuthMethod)
-	if !ok {
-		return "", fmt.Errorf("auth cast failed")
-	}
-
 	refs, err := remote.List(&git.ListOptions{
-		Auth: a,
+		Auth:            auth,
+		InsecureSkipTLS: insecure,
 	})
 
 	if err != nil {
@@ -92,4 +105,60 @@ func LsRemote(repoURL string, revision string, auth transport.AuthMethod) (strin
 	// If we get here, revision string had non hexadecimal characters (indicating its a branch, tag,
 	// or symbolic ref) and we were unable to resolve it to a commit SHA.
 	return "", fmt.Errorf("Unable to resolve '%s' to a commit SHA", revision)
+}
+
+func NewAuth(repoURL string, creds Creds) (transport.AuthMethod, error) {
+	if isSSH, user := IsSSHURL(repoURL); isSSH {
+		sshUser := user
+		signer, err := ssh.ParsePrivateKey([]byte(creds.SSHPrivateKey))
+		if err != nil {
+			return nil, err
+		}
+		auth := &gitssh.PublicKeys{}
+		auth.User = sshUser
+		auth.Signer = signer
+		if creds.Insecure {
+			auth.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+		} else {
+			// Set up validation of SSH known hosts for using our ssh_known_hosts
+			// file.
+			auth.HostKeyCallback, err = knownhosts.New(certutil.GetSSHKnownHostsDataPath())
+			if err != nil {
+				log.Errorf("Could not set-up SSH known hosts callback: %v", err)
+			}
+		}
+		return auth, nil
+	}
+	if IsHTTPURL(repoURL) || IsHTTPSURL(repoURL) && len(creds.Password) > 0 {
+		auth := githttp.BasicAuth{Username: creds.Username, Password: creds.Password}
+		if auth.Username == "" {
+			auth.Username = "x-access-token"
+		}
+		return &auth, nil
+	}
+	return nil, nil
+}
+
+func IsSSHURL(url string) (bool, string) {
+	matches := sshURLRegex.FindStringSubmatch(url)
+	if len(matches) > 2 {
+		return true, matches[2]
+	}
+	return false, ""
+}
+
+func IsHTTPSURL(url string) bool {
+	return httpsURLRegex.MatchString(url)
+}
+
+func IsHTTPURL(url string) bool {
+	return httpURLRegex.MatchString(url)
+}
+
+func GetSSHKnownHostsDataPath() string {
+	if envPath := os.Getenv(common.EnvVarSSHDataPath); envPath != "" {
+		return filepath.Join(envPath, common.DefaultSSHKnownHostsName)
+	} else {
+		return filepath.Join(common.DefaultPathSSHConfig, common.DefaultSSHKnownHostsName)
+	}
 }
