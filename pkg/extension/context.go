@@ -13,13 +13,12 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/ghodss/yaml"
 	"github.com/hashicorp/go-getter"
-	ssh "golang.org/x/crypto/ssh"
-	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -427,22 +426,25 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 			if err != nil {
 				return err
 			}
+			secret, err := c.GetSecret(ctx, *s.Git.Secret)
+			if err != nil {
+				return err
+			}
 			var gitURL string
 			baseDir := "resources"
 			if c.extension.Spec.BaseDirectory != "" {
 				baseDir = c.extension.Spec.BaseDirectory
 			}
 			if strings.HasPrefix(s.Git.Url, "ssh://") {
-				secret, err := c.GetSecret(ctx, *s.Git.Secret)
-				if err != nil {
-					return err
-				}
 				sshKey := base64.StdEncoding.EncodeToString(secret.Data["sshkey"])
 				gitURL = fmt.Sprintf("git::ssh://git@%s%s//%s?ref=%s&sshkey=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision, sshKey)
-			} else {
-				gitURL = fmt.Sprintf("git::%s%s//%s?ref=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision)
 			}
-			if err := getter.Get(filepath.Join(out, "resources"), gitURL); err != nil {
+			if strings.HasPrefix(s.Git.Url, "http://") || strings.HasPrefix(s.Git.Url, "https://") {
+				git_user, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(secret.Data["git_user"]))
+				git_token, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(secret.Data["git_token"]))
+				gitURL = fmt.Sprintf("git::https://%s:%s@%s%s//%s?ref=%s", git_user, git_token, parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision)
+			}
+			if err := getter.Get(filepath.Clean(filepath.Join(out, "resources")), gitURL); err != nil {
 				return err
 			}
 		case s.Web != nil:
@@ -463,12 +465,15 @@ func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, erro
 			if err != nil {
 				return nil, err
 			}
-			publicKey, err := gitssh.NewPublicKeys("git", secret.Data["sshkey"], "")
+			creds, err := getGitCred(s, secret)
 			if err != nil {
 				return nil, err
 			}
-			publicKey.HostKeyCallback = ssh.InsecureIgnoreHostKey()
-			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision, publicKey)
+			auth, err := git.NewAuth(s.Git.Url, *creds)
+			if err != nil {
+				return nil, err
+			}
+			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision, auth, creds.Insecure)
 			if err != nil {
 				return nil, err
 			}
@@ -501,4 +506,51 @@ func moveFile(src string, dst string) error {
 	}
 
 	return os.Remove(src)
+}
+
+func getGitCred(s extensionv1.ExtensionSource, secret v1.Secret) (*git.Creds, error) {
+	var sshPrivateKey string
+	var git_user string
+	var git_token string
+	var insecure bool
+	if strings.HasPrefix(s.Git.Url, "ssh://") {
+		if sshkey, ok := secret.Data["sshkey"]; ok {
+			sshkey, err := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(sshkey))
+			if err != nil {
+				return nil, err
+			}
+			sshPrivateKey = string(sshkey)
+		} else {
+			return nil, fmt.Errorf("missing sshkey in the provided secret")
+		}
+	}
+	if strings.HasPrefix(s.Git.Url, "http://") || strings.HasPrefix(s.Git.Url, "https://") {
+		username, err := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(secret.Data["git_user"]))
+		if err != nil {
+			return nil, err
+		}
+		git_user = string(username)
+		password, err := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(secret.Data["git_token"]))
+		if err != nil {
+			return nil, err
+		}
+		git_token = string(password)
+	}
+	if is_insecure, ok := secret.Data["insecure"]; ok {
+		is_insecure, err := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(is_insecure))
+		if err != nil {
+			return nil, err
+		}
+		insecure, err = strconv.ParseBool(string(is_insecure))
+		if err != nil {
+			return nil, err
+		}
+	}
+	creds := &git.Creds{
+		SSHPrivateKey: sshPrivateKey,
+		Username:      git_user,
+		Password:      git_token,
+		Insecure:      insecure,
+	}
+	return creds, nil
 }
