@@ -18,8 +18,11 @@ RUN CGO_ENABLED=0 go build -a -o manager main.go
 FROM alpine:latest
 
 RUN apk update && apk upgrade && apk add git openssh-client
-# TODO: Remove it once we have the implementation to add/remove the ssh known host entry
-COPY ssh_known_hosts /etc/ssh/ssh_known_hosts
+
+# support for mounting configuration from a configmap
+WORKDIR /app/config/ssh
+RUN touch ssh_known_hosts && \
+    ln -s /app/config/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
