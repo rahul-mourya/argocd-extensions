@@ -23,6 +23,8 @@ spec:
           volumeMounts:
             - name: extensions
               mountPath: /tmp/extensions/
+            - name: ssh-known-hosts
+              mountPath: /app/config/ssh
       volumes:
         - name: extensions
           emptyDir: {}
