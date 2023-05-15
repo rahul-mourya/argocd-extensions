@@ -1,7 +1,7 @@
-images:
-- name: quay.io/argoproj/argocd
-  newName: localhost:5001/argo-cd
-  newTag: public-repo-test
+#images:
+#- name: quay.io/argoproj/argocd
+#  newName: localhost:5001/argo-cd
+#  newTag: public-repo-test
 
 
 resources:
