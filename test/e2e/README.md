@@ -44,7 +44,6 @@ data:
 kind: Secret
 metadata:
   name: e2e-git-local
-  namespace: argocd-extentions-e2e
 type: Opaque
 ```
 4. The test cases for ssh and http are located at 
