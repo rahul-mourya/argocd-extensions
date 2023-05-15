@@ -1,6 +1,6 @@
 # End-to-end tests
 
-This directory contains the end-to-end tests for Argo CD Image Updater. The
+This directory contains the end-to-end tests for Argo CD Extensions as custom health checks. The
 tests are implemented using [kuttl](https://kuttl.dev) and require some
 prerequisites.
 
@@ -25,23 +25,14 @@ The end-to-end tests are comprised of the following components:
 
 ## Local cluster
 
-### Cluster installation
-
-1. Install a recent version of [k3s](https://k3s.io/) on your local machine.
-   If you want to re-use your k3s cluster, be aware that the test suite needs
-   changes to the cluster's configuration, i.e. it will set up a custom
-   container registry and credentials.
-
-2. Run `./bin/install.sh`. This will
-
-    * Configure your Docker daemon to be able to push to the test registry in
-      an insecure manner.
-
-    * Configure K3s to be able to access the test registry
-
-3. Create required namespace in the cluster: `kubectl create ns argocd-extentions-e2e`
-
 ## Pre-requisites
 
-1. Run `make install-prereqs` to install all the pre-requisites on your local
-   cluster.
+1. Run `make install-prereqs` to setup the test environment with all the pre-requisites on your local cluster.
+2. Get the IP address for the e2e-git-repo service installed in the previos step and update the same in all the integration test cases listed under path test/e2e/suite
+3. The e2e-git-repo service also includes a public server key located at path test/e2e/ssh-host-keys/ssh_host_ed25519_key.pub. For argocd-extension to be able to verify the git server while connecting via ssh, we would also need to update the ssh known hosts entry. This could be done from the argocd UI by adding ssh known hosts entry like below under settings.
+`[10.96.25.65]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDzQclfSGaf5Txma20q9qEj5vbDCnRvVWEzB6Gx1EYzm`
+Note: The IP in this entry should be the IP address of the e2e-git-repo service retrieved in step 2.
+4. The test cases for ssh and http are located at 
+`test/e2e/suite/`
+Example command to execute the test suite
+`kubectl kuttl test <path_to_test_suite>`
